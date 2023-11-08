@@ -47,8 +47,8 @@ pub async fn auth(Json(element): Json<User>) -> Json<Authentication> {
             auth: true })
     } else {
         Json(Authentication {
-            name: String::from("err"),
-            password: String::from("err"),
+            name: String::from(""),
+            password: String::from(""),
             auth: false
         })
     }
