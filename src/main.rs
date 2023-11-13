@@ -12,6 +12,7 @@ use tower_http::{request_id::{MakeRequestId, PropagateRequestIdLayer, RequestId,
 use tracing::info;
 use uuid::Uuid;
 use sns_backend::login::auth;
+use sns_backend::make_thread::create_thread;
 
 #[tokio::main]
 async fn main() {
@@ -21,6 +22,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/login", post(auth))
+        .route("/create", post(create_thread))
         //.route("/get", get(root))
         .layer(
             CorsLayer::new()
@@ -76,3 +78,4 @@ async fn access_log_on_request<B>(req: Request<B>, next: Next<B>) -> Result<Resp
 
 
 //curlのコマンド curl localhost:8080/login -XPOST -H 'Content-Type: application/json' -d '{"name": "haru", "password": "pass"}'
+//curlのコマンド curl localhost:8080/create -XPOST -H 'Content-Type: application/json' -d '{"title": "test-thread2", "body": "これはテスト", "user_id": "6551e079dc285b4db638b7ac", "user_name": "haru"}'
