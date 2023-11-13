@@ -1,10 +1,16 @@
-use mongodb::{Collection, Client, options::ClientOptions, bson::{doc, oid::ObjectId}};
+use mongodb::bson::{doc, oid::ObjectId};
 use futures::stream::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use axum::Json;
-
+use crate::connect_database;
 
 //Json変換
+#[derive(Deserialize)]
+pub struct ReceivedInfo {
+    pub name: String,
+    pub password: String
+}
+
 #[derive(Serialize)]
 pub struct Authentication {
     pub id: String,
@@ -21,16 +27,9 @@ pub struct User {
     pub password: String,
 }
 
-pub async fn connect_db() -> Collection::<User> {
-    let client_options = ClientOptions::parse("mongodb://localhost:27017").await.unwrap();
-    let client = Client::with_options(client_options).unwrap();
-
-
-    client.database("sns_db").collection::<User>("users")
-}
-
 pub async fn check_user(n: String, p: String) -> Option<User> {
-    let coll = connect_db().await;
+    let db = connect_database::connect_db().await;
+    let coll = db.collection::<User>("users");
     let filter = doc!{"name": n, "password": p};
     let mut cursor = coll.find(filter, None).await.unwrap();
 
@@ -42,7 +41,7 @@ pub async fn check_user(n: String, p: String) -> Option<User> {
 
 }
 
-pub async fn auth(Json(element): Json<User>) -> Json<Authentication> {
+pub async fn auth(Json(element): Json<ReceivedInfo>) -> Json<Authentication> {
     if let Some(usr) = check_user(element.name, element.password).await {
         Json(Authentication {
             id: usr.id.unwrap().to_string(),
