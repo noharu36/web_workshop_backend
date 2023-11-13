@@ -1,4 +1,4 @@
-use mongodb::{Collection, Client, options::ClientOptions, bson::doc};
+use mongodb::{Collection, Client, options::ClientOptions, bson::{doc, oid::ObjectId}};
 use futures::stream::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use axum::Json;
@@ -7,6 +7,7 @@ use axum::Json;
 //Json変換
 #[derive(Serialize)]
 pub struct Authentication {
+    pub id: String,
     pub name: String,
     pub password: String,
     pub auth: bool
@@ -14,6 +15,8 @@ pub struct Authentication {
 
 #[derive(Serialize, Deserialize)]
 pub struct User {
+    #[serde(rename = "_id", skip_serializing)]
+    pub id: Option<ObjectId>,
     pub name: String,
     pub password: String,
 }
@@ -23,7 +26,7 @@ pub async fn connect_db() -> Collection::<User> {
     let client = Client::with_options(client_options).unwrap();
 
 
-    client.database("test").collection::<User>("user")
+    client.database("sns_db").collection::<User>("users")
 }
 
 pub async fn check_user(n: String, p: String) -> Option<User> {
@@ -42,11 +45,13 @@ pub async fn check_user(n: String, p: String) -> Option<User> {
 pub async fn auth(Json(element): Json<User>) -> Json<Authentication> {
     if let Some(usr) = check_user(element.name, element.password).await {
         Json(Authentication {
+            id: usr.id.unwrap().to_string(),
             name: usr.name,
             password: usr.password,
             auth: true })
     } else {
         Json(Authentication {
+            id: String::from(""),
             name: String::from(""),
             password: String::from(""),
             auth: false
