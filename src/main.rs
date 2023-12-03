@@ -1,18 +1,22 @@
 use axum::{
-    routing::post,
-    http::{StatusCode, header::HeaderName, HeaderValue, Request},
-    //Json,
-    Router,
+    http::{header::HeaderName, HeaderValue, Request, StatusCode},
     middleware::Next,
     response::Response,
+    routing::{get, post},
+    //Json,
+    Router,
 };
-use tower::ServiceBuilder;
-use std::net::SocketAddr;
-use tower_http::{request_id::{MakeRequestId, PropagateRequestIdLayer, RequestId, SetRequestIdLayer,},cors::{Any, CorsLayer}};
-use tracing::info;
-use uuid::Uuid;
+use sns_backend::get_thread::get_threads_handler;
 use sns_backend::login::auth;
 use sns_backend::make_thread::create_thread;
+use std::net::SocketAddr;
+use tower::ServiceBuilder;
+use tower_http::{
+    cors::{Any, CorsLayer},
+    request_id::{MakeRequestId, PropagateRequestIdLayer, RequestId, SetRequestIdLayer},
+};
+use tracing::info;
+use uuid::Uuid;
 
 #[tokio::main]
 async fn main() {
@@ -21,14 +25,15 @@ async fn main() {
     let x_request_id = HeaderName::from_static("x-request-id");
 
     let app = Router::new()
+        .route("/", get(get_threads_handler))
         .route("/login", post(auth))
         .route("/create", post(create_thread))
         //.route("/get", get(root))
         .layer(
             CorsLayer::new()
-            .allow_origin(Any)
-            .allow_headers(Any)
-            .allow_methods(Any)
+                .allow_origin(Any)
+                .allow_headers(Any)
+                .allow_methods(Any),
         )
         .layer(
             ServiceBuilder::new()
@@ -37,9 +42,7 @@ async fn main() {
                     MyRequestId::new(),
                 ))
                 .layer(PropagateRequestIdLayer::new(x_request_id))
-                .layer(axum::middleware::from_fn(
-                    access_log_on_request,
-                )),
+                .layer(axum::middleware::from_fn(access_log_on_request)),
         );
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
@@ -49,7 +52,6 @@ async fn main() {
         .await
         .unwrap();
 }
-
 
 //アクセスログの出力
 #[derive(Clone)]
@@ -74,8 +76,6 @@ async fn access_log_on_request<B>(req: Request<B>, next: Next<B>) -> Result<Resp
     info!("{} {}", req.method(), req.uri());
     Ok(next.run(req).await)
 }
-
-
 
 //curlのコマンド curl localhost:8080/login -XPOST -H 'Content-Type: application/json' -d '{"name": "haru", "password": "pass"}'
 //curlのコマンド curl localhost:8080/create -XPOST -H 'Content-Type: application/json' -d '{"title": "test-thread2", "body": "これはテスト", "user_id": "6551e079dc285b4db638b7ac", "user_name": "haru"}'

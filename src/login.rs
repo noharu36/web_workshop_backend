@@ -1,59 +1,57 @@
-use mongodb::bson::{doc, oid::ObjectId};
-use futures::stream::TryStreamExt;
-use serde::{Deserialize, Serialize};
-use axum::Json;
 use crate::connect_database;
+use axum::Json;
+use serde::{Deserialize, Serialize};
+use sqlx::MySql;
+use sqlx::Pool;
 
 //Json変換
 #[derive(Deserialize)]
 pub struct ReceivedInfo {
     pub name: String,
-    pub password: String
+    pub password: String,
 }
 
 #[derive(Serialize)]
 pub struct Authentication {
-    pub id: String,
+    pub id: i32,
     pub name: String,
     pub password: String,
-    pub auth: bool
+    pub auth: bool,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, sqlx::FromRow, Clone)]
 pub struct User {
-    #[serde(rename = "_id", skip_serializing)]
-    pub id: Option<ObjectId>,
+    pub id: i32,
     pub name: String,
     pub password: String,
 }
 
-pub async fn check_user(n: String, p: String) -> Option<User> {
-    let db = connect_database::connect_db().await;
-    let coll = db.collection::<User>("users");
-    let filter = doc!{"name": n, "password": p};
-    let mut cursor = coll.find(filter, None).await.unwrap();
 
-    while let Some(doc) = cursor.try_next().await.unwrap() {
-        return Some(doc);
-    }
-
-    None
-
+pub async fn check_user(n: String, p: String, db: Pool<MySql>) -> Option<User> {
+    println!("{} {}", n, p);
+    sqlx::query_as::<_, User>("SELECT * FROM users WHERE name = ? AND password = ?")
+        .bind(n)
+        .bind(p)
+        .fetch_one(&db)
+        .await.ok()
 }
 
 pub async fn auth(Json(element): Json<ReceivedInfo>) -> Json<Authentication> {
-    if let Some(usr) = check_user(element.name, element.password).await {
+    let db = connect_database::connect_db().await.unwrap();
+    if let Some(usr) = check_user(element.name, element.password, db).await {
+        println!("{}", usr.id);
         Json(Authentication {
-            id: usr.id.unwrap().to_string(),
+            id: usr.id,
             name: usr.name,
             password: usr.password,
-            auth: true })
+            auth: true,
+        })
     } else {
         Json(Authentication {
-            id: String::from(""),
+            id: 0,
             name: String::from(""),
             password: String::from(""),
-            auth: false
+            auth: false,
         })
     }
 }
