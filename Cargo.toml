@@ -16,6 +16,7 @@ tower-http = { version = "0.4.4", features = ["full"] }
 serde = { version = "1.0.188", features = ["derive"] }
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["fmt","std","json"] }
-mongodb = "2.7.1"
 futures = "0.3"
 chrono = "0.4"
+sqlx = { version = "0.7", features = [ "mysql", "runtime-tokio" ] }
+dotenvy = "0.15.7"
